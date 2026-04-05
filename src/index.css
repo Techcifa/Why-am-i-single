@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-slate-50 text-text-main antialiased min-h-screen;
+        background-image:
+            radial-gradient(at 0% 0%, hsla(344, 100%, 96%, 1) 0, transparent 50%),
+            radial-gradient(at 50% 0%, hsla(172, 100%, 96%, 1) 0, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(344, 100%, 96%, 1) 0, transparent 50%);
+        background-attachment: fixed;
+    }
+}
