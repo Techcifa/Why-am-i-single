@@ -26,6 +26,14 @@ interface GeneratedResults {
     closing: string;
 }
 
+interface DeepSeekResponse {
+    choices?: Array<{
+        message?: {
+            content?: string;
+        };
+    }>;
+}
+
 type CategoryId =
     | 'communication'
     | 'availability'
@@ -457,7 +465,7 @@ async function generateAiResults(
         throw new Error(`DeepSeek request failed with status ${response.status}`);
     }
 
-    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const payload = (await response.json()) as DeepSeekResponse;
     const content = payload.choices?.[0]?.message?.content;
 
     if (typeof content !== 'string') {
@@ -567,7 +575,7 @@ app.post('/api/chat', async (req, res) => {
             throw new Error('Chat request failed');
         }
 
-        const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+        const payload = (await response.json()) as DeepSeekResponse;
         const reply = payload?.choices?.[0]?.message?.content;
 
         if (typeof reply !== 'string' || !reply.trim()) {
