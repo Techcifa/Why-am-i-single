@@ -8,8 +8,16 @@ export interface ResultInsight {
     action: string;
 }
 
-export function calculateInsights(answers: Record<string, string>): ResultInsight[] {
-    // 1. Scoring buckets
+export interface InsightContext {
+    ageRange: string;
+    gender: string;
+    intention: string;
+}
+
+export function calculateInsights(
+    answers: Record<string, string>,
+    _context?: InsightContext | null
+): ResultInsight[] {
     const scores: Record<CategoryId, number> = {
         communication: 0,
         availability: 0,
@@ -17,27 +25,27 @@ export function calculateInsights(answers: Record<string, string>): ResultInsigh
         lifestyle: 0,
         social: 0,
         standards: 0,
-        growth: 0
+        growth: 0,
     };
 
-    // 2. Tally scores
     Object.entries(answers).forEach(([questionId, optionId]) => {
-        const question = QUESTIONS.find((q) => q.id === questionId);
-        if (!question) return;
+        const question = QUESTIONS.find((entry) => entry.id === questionId);
+        if (!question) {
+            return;
+        }
 
-        const option = question.options.find((o) => o.id === optionId);
-        if (!option) return;
+        const option = question.options.find((entry) => entry.id === optionId);
+        if (!option) {
+            return;
+        }
 
         option.tags.forEach((tag) => {
-            // Add value to valid categories
             if (scores[tag] !== undefined) {
                 scores[tag] += option.value;
             }
         });
     });
 
-    // 3. Generate Insights based on threshold
-    // This is a simple logic: if score in a category > X, pick a relevant insight
     const thresholds: Record<CategoryId, number> = {
         communication: 2,
         availability: 3,
@@ -45,26 +53,34 @@ export function calculateInsights(answers: Record<string, string>): ResultInsigh
         lifestyle: 2,
         social: 2,
         standards: 3,
-        growth: 2
+        growth: 2,
     };
 
-    const results: ResultInsight[] = [];
+    const rankedCategories = (Object.keys(scores) as CategoryId[])
+        .map((category) => ({
+            category,
+            score: scores[category],
+            threshold: thresholds[category],
+        }))
+        .filter(({ score, threshold }) => score >= threshold)
+        .sort((left, right) => right.score - left.score);
 
-    (Object.keys(scores) as CategoryId[]).forEach((cat) => {
-        if (scores[cat] >= thresholds[cat]) {
-            const insightData = INSIGHTS_DB[cat][0]; // Simple selection for MVP
-            if (insightData) {
-                results.push({
-                    id: cat,
-                    category: cat.charAt(0).toUpperCase() + cat.slice(1),
-                    title: insightData.title,
-                    description: insightData.content,
-                    action: insightData.suggestion,
-                });
-            }
+    return rankedCategories.slice(0, 5).flatMap(({ category, score, threshold }) => {
+        const entries = INSIGHTS_DB[category];
+        const index = score >= threshold * 2 ? 1 : 0;
+        const fallbackEntry = entries[0];
+        const selectedEntry = entries[index] ?? fallbackEntry;
+
+        if (!selectedEntry) {
+            return [];
         }
-    });
 
-    // Limit to top 3-5 to not overwhelm
-    return results.slice(0, 5);
+        return [{
+            id: category,
+            category: category.charAt(0).toUpperCase() + category.slice(1),
+            title: selectedEntry.title,
+            description: selectedEntry.content,
+            action: selectedEntry.suggestion,
+        }];
+    });
 }
