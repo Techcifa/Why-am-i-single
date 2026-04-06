@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
+import { Chat } from './Chat';
 import { calculateInsights, ResultInsight } from '../utils/engine';
 import { RefreshCw, Download } from 'lucide-react';
 import { ContextData } from './ContextForm';
@@ -263,6 +264,15 @@ export function Results({ answers, onRetake, context, isLoading = false, onReady
                     <Download className="w-4 h-4 mr-2" />
                     Save Results
                 </Button>
+            </div>
+
+            <div className="mt-10">
+                <Chat
+                    answers={answers}
+                    context={context}
+                    results={displayResult}
+                    isResultsLoading={shouldShowLoading}
+                />
             </div>
         </div>
     );

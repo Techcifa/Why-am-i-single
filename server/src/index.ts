@@ -501,6 +501,83 @@ app.post('/api/generate-results', async (req, res) => {
     }
 });
 
+app.post('/api/chat', async (req, res) => {
+    try {
+        const {
+            messages,
+            context,
+            answers,
+            results,
+        } = req.body as {
+            messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+            context: ContextData;
+            answers: Record<string, string>;
+            results: GeneratedResults;
+        };
+
+        const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+
+        if (!apiKey) {
+            throw new Error('Missing DeepSeek API key');
+        }
+
+        const answerSummary = buildAnswerSummary(answers ?? {});
+        const insightTitles = Array.isArray(results?.insights)
+            ? results.insights.map((insight) => insight.title).join(', ')
+            : '';
+        const systemPrompt = [
+            'You are a compassionate but direct AI coach continuing a conversation after a dating self-reflection quiz.',
+            `Context: age ${context?.ageRange ?? 'unknown'}, gender ${context?.gender ?? 'unknown'}, intention ${context?.intention ?? 'unknown'}.`,
+            `Quiz answers:\n${answerSummary}`,
+            `Results headline: ${results?.headline ?? 'Unknown'}.`,
+            `Insight titles: ${insightTitles || 'None provided'}.`,
+            'Stay on the topic of dating, relationships, and self-growth.',
+            'If the user asks for something unrelated, redirect warmly but firmly back to their relationships or growth.',
+            'Never diagnose.',
+            'Never recommend therapy directly.',
+            'Sound like a wise trusted friend, not a chatbot.',
+            'Keep responses under 120 words unless the user asks something that genuinely needs more.',
+        ].join('\n\n');
+
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: RESULT_MODEL,
+                temperature: 0.75,
+                max_tokens: 400,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    ...((messages ?? []).filter((message) =>
+                        message
+                        && (message.role === 'user' || message.role === 'assistant')
+                        && typeof message.content === 'string'
+                        && message.content.trim().length > 0
+                    )),
+                ],
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Chat request failed');
+        }
+
+        const payload = await response.json();
+        const reply = payload?.choices?.[0]?.message?.content;
+
+        if (typeof reply !== 'string' || !reply.trim()) {
+            throw new Error('Chat reply missing');
+        }
+
+        res.json({ reply: reply.trim() });
+    } catch {
+        res.status(200).json({ reply: "I'm having trouble connecting right now. Try again in a moment." });
+    }
+});
+
 app.get('/api/stats', async (_req, res) => {
     try {
         const db = await getDb();
