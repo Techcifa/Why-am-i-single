@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { QUESTIONS } from './data/questions';
 import { Intro } from './components/Intro';
 import { ContextForm, ContextData } from './components/ContextForm';
@@ -117,9 +117,9 @@ function App() {
         window.scrollTo(0, 0);
     };
 
-    const handleResultsReady = () => {
+    const handleResultsReady = useCallback(() => {
         setState('results');
-    };
+    }, []);
 
     const handleRetake = () => {
         setAnswers({});

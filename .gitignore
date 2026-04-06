@@ -16,3 +16,4 @@ dist-ssr/
 database.sqlite
 .env
 server/.env
+desktop.ini

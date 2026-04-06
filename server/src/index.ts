@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { getDb } from './db';
@@ -23,6 +24,256 @@ interface GeneratedResults {
     closing: string;
 }
 
+type CategoryId =
+    | 'communication'
+    | 'availability'
+    | 'habits'
+    | 'lifestyle'
+    | 'social'
+    | 'standards'
+    | 'growth';
+
+const QUESTIONS = [
+    {
+        id: 'comm_1',
+        text: 'When a disagreement starts with someone you’re dating, what is your first instinct?',
+        options: [
+            { id: 'a', label: 'I usually withdraw or go silent to avoid making it worse.' },
+            { id: 'b', label: 'I try to fix it immediately, sometimes feeling anxious if it’s not resolved.' },
+            { id: 'c', label: 'I listen and try to understand their side before explaining mine.' },
+            { id: 'd', label: 'I get defensive if I feel attacked.' },
+        ],
+    },
+    {
+        id: 'comm_2',
+        text: 'How comfortable are you expressing your needs in the early stages of dating?',
+        options: [
+            { id: 'a', label: 'Very uncomfortable. I don’t want to seem "needy".' },
+            { id: 'b', label: 'I drop hints and hope they pick up on them.' },
+            { id: 'c', label: 'Comfortable. I say what I mean clearly and kindly.' },
+            { id: 'd', label: 'I tend to focus entirely on their needs instead of mine.' },
+        ],
+    },
+    {
+        id: 'avail_1',
+        text: 'When someone you like starts getting really close to you emotionally, how do you feel?',
+        options: [
+            { id: 'a', label: 'Excited and secure.' },
+            { id: 'b', label: 'I panic slightly and wonder if I’m losing my freedom.' },
+            { id: 'c', label: 'I worry they will see the "real" me and leave.' },
+            { id: 'd', label: 'I lose interest once the "chase" is over.' },
+        ],
+    },
+    {
+        id: 'avail_2',
+        text: 'How do you process your own difficult emotions?',
+        options: [
+            { id: 'a', label: 'I often numb out or distract myself (work, scrolling, going out).' },
+            { id: 'b', label: 'I rely heavily on a partner to soothe me.' },
+            { id: 'c', label: 'I take time to reflect, maybe talk to a friend, and process it.' },
+        ],
+    },
+    {
+        id: 'stand_1',
+        text: 'When you meet a new potential partner, what do you look for first?',
+        options: [
+            { id: 'a', label: 'Reasons why it won’t work (red flags).' },
+            { id: 'b', label: 'Chemistry and spark.' },
+            { id: 'c', label: 'Shared values and how I feel around them.' },
+            { id: 'd', label: 'If they check every box on my list.' },
+        ],
+    },
+    {
+        id: 'stand_2',
+        text: 'How do you view "settling"?',
+        options: [
+            { id: 'a', label: 'I refuse to settle. I want everything perfect or nothing.' },
+            { id: 'b', label: 'I’m terrified of settling, so I end things quickly.' },
+            { id: 'c', label: 'Compromise is normal, but core values aren’t negotiable.' },
+        ],
+    },
+    {
+        id: 'life_1',
+        text: 'How does a relationship fit into your current life?',
+        options: [
+            { id: 'a', label: 'It’s my #1 priority above everything else.' },
+            { id: 'b', label: 'I’m extremely busy; I don’t know where I’d fit one in.' },
+            { id: 'c', label: 'I have a full life, but I make space for connection.' },
+            { id: 'd', label: 'I’m happy alone, maybe too happy to change my routine.' },
+        ],
+    },
+    {
+        id: 'soc_1',
+        text: 'How often do you put yourself in situations to meet new people?',
+        options: [
+            { id: 'a', label: 'Rarely. I stick to my existing circle.' },
+            { id: 'b', label: 'I use apps, but rarely go on actual dates.' },
+            { id: 'c', label: 'Frequently. I’m open to meeting people anywhere.' },
+            { id: 'd', label: 'I wait for them to come to me.' },
+        ],
+    },
+    {
+        id: 'habit_1',
+        text: 'Reflecting on your past relationships, is there a pattern?',
+        options: [
+            { id: 'a', label: 'I tend to date "projects" I need to fix.' },
+            { id: 'b', label: 'They usually leave me suddenly.' },
+            { id: 'c', label: 'I lose interest as soon as it gets serious.' },
+            { id: 'd', label: 'Every relationship has been different.' },
+        ],
+    },
+    {
+        id: 'habit_2',
+        text: 'How do you handle rejection in dating?',
+        options: [
+            { id: 'a', label: 'I take it very personally and give up for a while.' },
+            { id: 'b', label: 'I get angry or resentful.' },
+            { id: 'c', label: 'It stings, but I move on knowing it wasn’t a match.' },
+        ],
+    },
+    {
+        id: 'grow_1',
+        text: 'How happy are you with your life outside of dating?',
+        options: [
+            { id: 'a', label: 'Not very. I feel I need a partner to be happy.' },
+            { id: 'b', label: 'I’m content, but I often feel like something is missing.' },
+            { id: 'c', label: 'I love my life. A partner would just be a bonus.' },
+        ],
+    },
+] as const;
+
+const ANSWER_SCORES: Record<string, Record<string, { value: number; tags: CategoryId[] }>> = {
+    comm_1: {
+        a: { value: 2, tags: ['communication'] },
+        b: { value: 2, tags: ['communication'] },
+        c: { value: 0, tags: ['communication'] },
+        d: { value: 2, tags: ['communication'] },
+    },
+    comm_2: {
+        a: { value: 3, tags: ['communication'] },
+        b: { value: 2, tags: ['communication'] },
+        c: { value: 0, tags: ['communication'] },
+        d: { value: 2, tags: ['communication'] },
+    },
+    avail_1: {
+        a: { value: 0, tags: ['availability'] },
+        b: { value: 3, tags: ['availability'] },
+        c: { value: 3, tags: ['availability'] },
+        d: { value: 3, tags: ['availability'] },
+    },
+    avail_2: {
+        a: { value: 2, tags: ['availability'] },
+        b: { value: 2, tags: ['availability'] },
+        c: { value: 0, tags: ['availability'] },
+    },
+    stand_1: {
+        a: { value: 3, tags: ['standards'] },
+        b: { value: 1, tags: ['standards'] },
+        c: { value: 0, tags: ['standards'] },
+        d: { value: 2, tags: ['standards'] },
+    },
+    stand_2: {
+        a: { value: 3, tags: ['standards'] },
+        b: { value: 2, tags: ['standards'] },
+        c: { value: 0, tags: ['standards'] },
+    },
+    life_1: {
+        a: { value: 2, tags: ['lifestyle'] },
+        b: { value: 3, tags: ['lifestyle'] },
+        c: { value: 0, tags: ['lifestyle'] },
+        d: { value: 2, tags: ['lifestyle'] },
+    },
+    soc_1: {
+        a: { value: 3, tags: ['social'] },
+        b: { value: 2, tags: ['social'] },
+        c: { value: 0, tags: ['social'] },
+        d: { value: 2, tags: ['social'] },
+    },
+    habit_1: {
+        a: { value: 3, tags: ['habits'] },
+        b: { value: 2, tags: ['habits'] },
+        c: { value: 3, tags: ['habits'] },
+        d: { value: 0, tags: ['habits'] },
+    },
+    habit_2: {
+        a: { value: 2, tags: ['habits'] },
+        b: { value: 2, tags: ['habits'] },
+        c: { value: 0, tags: ['habits'] },
+    },
+    grow_1: {
+        a: { value: 3, tags: ['growth'] },
+        b: { value: 1, tags: ['growth'] },
+        c: { value: 0, tags: ['growth'] },
+    },
+};
+
+const INSIGHTS_DB: Record<CategoryId, Array<{ title: string; content: string; suggestion: string }>> = {
+    communication: [
+        {
+            title: 'Silent treatment limits connection',
+            content: 'You may tend to withdraw during conflict. While this protects you in the moment, it can leave partners feeling shut out.',
+            suggestion: "Try saying 'I need a moment to think' instead of going silent.",
+        },
+        {
+            title: 'Hyper-independence',
+            content: "You might find it hard to express needs because you're used to doing everything yourself.",
+            suggestion: 'Experiment with asking for small favors to build trust.',
+        },
+    ],
+    availability: [
+        {
+            title: 'Fear of intimacy',
+            content: "Patterns suggest you might pull away when things get 'real'. This is often a protective mechanism, not a lack of capability for love.",
+            suggestion: "Reflect on what getting 'hurt' actually means to you now vs. in the past.",
+        },
+    ],
+    habits: [
+        {
+            title: 'Attracted to potential',
+            content: 'You may be dating who people *could* be, rather than who they are right now.',
+            suggestion: 'Try evaluating your next date strictly on who they are today.',
+        },
+    ],
+    lifestyle: [
+        {
+            title: 'Too busy for love?',
+            content: 'Your life is full, which is great, but there might not be practical space for a partner right now.',
+            suggestion: "Look at your schedule. Where would a partner actually fit?",
+        },
+    ],
+    social: [
+        {
+            title: 'Waiting to be found',
+            content: 'You might be hoping love finds you without changing your routine. Love often requires new contexts.',
+            suggestion: "Try one new social activity this month where the goal isn't dating.",
+        },
+    ],
+    standards: [
+        {
+            title: 'The perfection trap',
+            content: "Looking for reasons to say 'no' keeps you safe, but it also keeps you single.",
+            suggestion: "Try looking for 'green flags' first on your next date.",
+        },
+    ],
+    growth: [
+        {
+            title: 'External validation',
+            content: "You might be looking for a relationship to 'fix' how you feel about your life.",
+            suggestion: 'Focus on building a life you love on your own first.',
+        },
+    ],
+};
+
+const THRESHOLDS: Record<CategoryId, number> = {
+    communication: 2,
+    availability: 3,
+    habits: 3,
+    lifestyle: 2,
+    social: 2,
+    standards: 3,
+    growth: 2,
+};
+
 const app = express();
 const port = 3000;
 const RESULT_MODEL = 'deepseek-chat';
@@ -30,49 +281,70 @@ const RESULT_MODEL = 'deepseek-chat';
 app.use(cors());
 app.use(express.json());
 
-function getFrontendEngine() {
-    return require('../../src/utils/engine') as {
-        calculateInsights: (answers: Record<string, string>, context?: ContextData | null) => GeneratedInsight[];
-    };
-}
-
 function buildAnswerSummary(answers: Record<string, string>) {
-    try {
-        const frontendQuestions = require('../../src/data/questions') as {
-            QUESTIONS: Array<{
-                id: string;
-                text: string;
-                options: Array<{ id: string; label: string }>;
-            }>;
-        };
+    const summary = Object.entries(answers)
+        .map(([questionId, optionId]) => {
+            const question = QUESTIONS.find((entry) => entry.id === questionId);
+            const option = question?.options.find((entry) => entry.id === optionId);
 
-        return Object.entries(answers)
-            .map(([questionId, optionId]) => {
-                const question = frontendQuestions.QUESTIONS.find((entry) => entry.id === questionId);
-                const option = question?.options.find((entry) => entry.id === optionId);
+            if (!question || !option) {
+                return null;
+            }
 
-                if (!question || !option) {
-                    return null;
-                }
+            return `- ${question.text}\n  Answer: ${option.label}`;
+        })
+        .filter((entry): entry is string => Boolean(entry))
+        .join('\n');
 
-                return `- ${question.text}\n  Answer: ${option.label}`;
-            })
-            .filter((entry): entry is string => Boolean(entry))
-            .join('\n');
-    } catch {
-        return JSON.stringify(answers, null, 2);
-    }
+    return summary || JSON.stringify(answers, null, 2);
 }
 
 function buildFallbackResults(answers: Record<string, string>, context: ContextData | null): GeneratedResults {
-    let fallbackInsights: GeneratedInsight[] = [];
+    const scores: Record<CategoryId, number> = {
+        communication: 0,
+        availability: 0,
+        habits: 0,
+        lifestyle: 0,
+        social: 0,
+        standards: 0,
+        growth: 0,
+    };
 
-    try {
-        const { calculateInsights } = getFrontendEngine();
-        fallbackInsights = calculateInsights(answers, context).slice(0, 4);
-    } catch (error) {
-        console.error('Engine fallback unavailable, using generic fallback results:', error);
-    }
+    Object.entries(answers).forEach(([questionId, optionId]) => {
+        const answer = ANSWER_SCORES[questionId]?.[optionId];
+        if (!answer) {
+            return;
+        }
+
+        answer.tags.forEach((tag) => {
+            scores[tag] += answer.value;
+        });
+    });
+
+    const fallbackInsights = (Object.keys(scores) as CategoryId[])
+        .map((category) => ({
+            category,
+            score: scores[category],
+            threshold: THRESHOLDS[category],
+        }))
+        .filter(({ score, threshold }) => score >= threshold)
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 4)
+        .flatMap(({ category, score, threshold }) => {
+            const entries = INSIGHTS_DB[category];
+            const selected = entries[score >= threshold * 2 ? 1 : 0] ?? entries[0];
+
+            if (!selected) {
+                return [];
+            }
+
+            return [{
+                category: category.charAt(0).toUpperCase() + category.slice(1),
+                title: selected.title,
+                description: selected.content,
+                action: selected.suggestion,
+            }];
+        });
 
     const contextLine = context
         ? `${context.ageRange}, ${context.gender}, ${context.intention.replace('-', ' ')}`
