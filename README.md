@@ -11,20 +11,16 @@ A supportive, non-judgmental web application to help users explore their dating 
 
 ## How to Run
 
-Since this project uses React + Vite, you need Node.js installed.
+1. Copy `.env.example` to `.env` in the root (VITE_DEEPSEEK_API_KEY)
+2. Copy `server/.env.example` to `server/.env` (DEEPSEEK_API_KEY)
+3. Fill in both API keys (same DeepSeek key in both files)
+4. `npm install` in root
+5. `npm install` in `server/`
+6. `npm run dev:all` from root to start both servers
+7. Open http://localhost:5173
 
-1.  Open your terminal in this folder: `WhyAmISingle`
-2.  Install dependencies:
-    ```bash
-    npm install
-    # or
-    yarn
-    ```
-3.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-4.  Open the local URL (usually `http://localhost:5173`) in your browser.
+### Why two servers?
+The frontend proxies `/api/*` to the backend so the DeepSeek API key stays server-side.
 
 ## Troubleshooting
 

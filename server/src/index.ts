@@ -483,7 +483,7 @@ app.post('/api/generate-results', async (req, res) => {
         try {
             result = await generateAiResults(answers ?? {}, context ?? null);
         } catch (error) {
-            console.error('AI result generation failed, falling back to local engine:', error);
+            console.error('[/api/generate-results] error:', error);
             result = buildFallbackResults(answers ?? {}, context ?? null);
         }
 
@@ -496,7 +496,7 @@ app.post('/api/generate-results', async (req, res) => {
 
         res.json({ result });
     } catch (error) {
-        console.error('Error generating result:', error);
+        console.error('[/api/generate-results] error:', error);
         res.status(500).json({ error: 'Failed to generate result' });
     }
 });
@@ -573,7 +573,8 @@ app.post('/api/chat', async (req, res) => {
         }
 
         res.json({ reply: reply.trim() });
-    } catch {
+    } catch (error) {
+        console.error('[/api/chat] error:', error);
         res.status(200).json({ reply: "I'm having trouble connecting right now. Try again in a moment." });
     }
 });
@@ -584,6 +585,7 @@ app.get('/api/stats', async (_req, res) => {
         const count = await db.get('SELECT COUNT(*) as count FROM results');
         res.json(count);
     } catch (error) {
+        console.error('[/api/stats] error:', error);
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
