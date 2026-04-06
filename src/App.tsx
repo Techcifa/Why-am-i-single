@@ -29,7 +29,7 @@ function App() {
     };
 
     const handleContextComplete = (data: ContextData) => {
-        const firstQuestion = QUESTIONS[0] ?? null;
+        const firstQuestion = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)] ?? null;
 
         setContext(data);
         setAnswers({});

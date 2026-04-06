@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 import express from 'express';
 import cors from 'cors';
 import { getDb } from './db';
@@ -421,7 +423,7 @@ async function generateAiResults(
     answers: Record<string, string>,
     context: ContextData | null
 ): Promise<GeneratedResults> {
-    const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY)?.trim();
 
     if (!apiKey) {
         return buildFallbackResults(answers, context);
@@ -515,7 +517,7 @@ app.post('/api/chat', async (req, res) => {
             results: GeneratedResults;
         };
 
-        const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+        const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY)?.trim();
 
         if (!apiKey) {
             throw new Error('Missing DeepSeek API key');
@@ -588,6 +590,12 @@ app.get('/api/stats', async (_req, res) => {
         console.error('[/api/stats] error:', error);
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
+});
+
+const distPath = path.resolve(__dirname, '../../dist');
+app.use(express.static(distPath));
+app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 app.listen(port, () => {

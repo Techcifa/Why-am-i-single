@@ -29,7 +29,9 @@ function buildHumanReadableSummary(answers: Record<string, string>) {
 }
 
 function getSequentialFallbackQuestion(askedQuestionIds: string[]): Question | null {
-    return QUESTIONS.find((question) => !askedQuestionIds.includes(question.id)) ?? null;
+    const remaining = QUESTIONS.filter((question) => !askedQuestionIds.includes(question.id));
+    if (remaining.length === 0) return null;
+    return remaining[Math.floor(Math.random() * remaining.length)];
 }
 
 async function requestAdaptiveQuestion(
@@ -60,7 +62,7 @@ async function requestAdaptiveQuestion(
             },
             body: JSON.stringify({
                 model: QUESTION_SELECTION_MODEL,
-                temperature: 0.3,
+                temperature: 0.7,
                 max_tokens: 20,
                 messages: [
                     {
